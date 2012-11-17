@@ -44,8 +44,14 @@ class Tasks(tasksSeq: (String, String)*) {
   }
 
   override def toString: String = {
+
+    def padToLeft(s: String, len: Int, c: Char) = "".padTo(len - s.length, c) + s
+
     val formatted = tasks.zipWithIndex map {
-      case (t, i) => t.copy(name = (i + 1) + ". " + t.name.padTo(max, ' '))
+      case (t, i) => {
+        val num = padToLeft((i+1).toString, tasks.size.toString.length, ' ')
+        t.copy(name = num + ". " + t.name.padTo(max, '.'))
+      }
     }
     formatted.mkString("\n")
   }
