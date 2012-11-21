@@ -3,18 +3,20 @@ package ua.com.jozic
 import annotation.tailrec
 import java.io._
 import io.Source
+import java.util.Date
+import java.text.DateFormat
 
 /**
  * @author jozic
  * @since 11/16/12
  */
-class Tasks(tasksSeq: (String, String)*) {
+class Tasks(tasksSeq: (String, String, String)*) {
 
   private val tasks = collection.mutable.ArrayBuffer[Task]()
   private var max = 0
 
   tasksSeq foreach {
-    case (name, progress) => add(Task(name, progress.toInt))
+    case (name, progress, date) => add(Task(name, progress.toInt, new Date(date.toLong)))
   }
 
   def add(name: String): Tasks = add(Task(name, 0))
@@ -49,12 +51,15 @@ class Tasks(tasksSeq: (String, String)*) {
     this
   }
 
-  case class Task(name: String, progress: Int) {
-    override def toString: String = name + " : " + "".padTo(progress, '#')
+  case class Task(name: String, progress: Int, lastUpdated: Date = new Date) {
 
-    def toStoreString: String = name + ":" + progress
+    def date = java.text.DateFormat.getDateInstance(DateFormat.MEDIUM).format(lastUpdated)
 
-    def inc = copy(progress = progress + 1)
+    override def toString: String = name +  " (" +date +") : " + "".padTo(progress, '#')
+
+    def toStoreString: String = name + ":" + progress + ":" + lastUpdated.getTime
+
+    def inc = copy(progress = progress + 1, lastUpdated = new Date)
   }
 
   override def toString: String = {
@@ -82,8 +87,10 @@ object Tasks extends App {
     val loaded = if (new File(filename).exists())
       for {
         line <- Source.fromFile(filename).getLines()
-        (name, progress) = line.splitAt(line.indexOf(':'))
-      } yield (name, progress.drop(1))
+        (name, progressAndDateString) = line.splitAt(line.indexOf(':'))
+        progressAndDate = progressAndDateString.drop(1)
+        (progress, date) = progressAndDate.splitAt(progressAndDate.indexOf(':'))
+      } yield (name, progress, date.drop(1))
     else Seq.empty
     new Tasks(loaded.toSeq: _*)
   }
