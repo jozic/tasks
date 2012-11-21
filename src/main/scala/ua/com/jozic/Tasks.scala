@@ -19,6 +19,20 @@ class Tasks(tasksSeq: (String, String)*) {
 
   def add(name: String): Tasks = add(Task(name, 0))
 
+  def remove(i: Int) = {
+    tasks.remove(i)
+    this
+  }
+
+  def swap(i1: Int, i2: Int) = {
+    if (tasks.isDefinedAt(i1) && tasks.isDefinedAt(i2)) {
+      val tmp = tasks(i1)
+      tasks(i1) = tasks(i2)
+      tasks(i2) = tmp
+    }
+    this
+  }
+
   def add(task: Task): Tasks = {
     tasks += task
     max = math.max(task.name.length, max)
@@ -90,12 +104,20 @@ object Tasks extends App {
 
   @tailrec
   def listen() {
+    val number = "\\d+"
+
+    def toInt(n: String) = n.toInt - 1
     readLine("> ") match {
       case ":q" => println("buy")
       case ":l" => list(); listen()
       case ":drop" => tasks.clear(); save(tasks); listen()
-      case n if n.matches("\\d+") =>
-        tasks.inc(n.toInt - 1); save(tasks); list(); listen()
+      case n if n.matches(number) =>
+        tasks.inc(toInt(n)); save(tasks); list(); listen()
+      case n if n.matches("!" +number) =>
+        tasks.remove(toInt(n.drop(1))); save(tasks); list(); listen()
+      case n if n.matches(number+"><"+number) =>
+        val (n1, n2) = n.splitAt(n.indexOf("><"))
+        tasks.swap(toInt(n1), toInt(n2.drop(2))); save(tasks); list(); listen()
       case name if name.matches("\".+\"") =>
         tasks add name.stripPrefix("\"").stripSuffix("\""); save(tasks); list(); listen()
       case _ => listen()
