@@ -10,14 +10,29 @@ import java.text.DateFormat
  * @author jozic
  * @since 11/16/12
  */
-class Tasks(tasksSeq: (String, String, String)*) {
+case class Task(name: String, progress: Int, lastUpdated: Date = new Date) {
+
+  def date = java.text.DateFormat.getDateInstance(DateFormat.MEDIUM).format(lastUpdated)
+
+  override def toString: String = name + " (" + date + ") : " + "".padTo(progress, '#')
+
+  def toStoreString: String = name + ":" + progress + ":" + lastUpdated.getTime
+
+  def inc = copy(progress = progress + 1, lastUpdated = new Date)
+}
+
+class Tasks(tasksSeq: Array[Task]) {
 
   private val tasks = collection.mutable.ArrayBuffer[Task]()
   private var max = 0
 
-  tasksSeq foreach {
-    case (name, progress, date) => add(Task(name, progress.toInt, new Date(date.toLong)))
-  }
+  tasksSeq foreach add
+
+  def this(tasksSeq: (String, String, String)*) = this(
+    tasksSeq.toArray map {
+      case (name, progress, date) => Task(name, progress.toInt, new Date(date.toLong))
+    }
+  )
 
   def add(name: String): Tasks = add(Task(name, 0))
 
@@ -51,16 +66,8 @@ class Tasks(tasksSeq: (String, String, String)*) {
     this
   }
 
-  case class Task(name: String, progress: Int, lastUpdated: Date = new Date) {
+  def byDate = new Tasks(tasks.toArray.sortBy(_.lastUpdated))
 
-    def date = java.text.DateFormat.getDateInstance(DateFormat.MEDIUM).format(lastUpdated)
-
-    override def toString: String = name +  " (" +date +") : " + "".padTo(progress, '#')
-
-    def toStoreString: String = name + ":" + progress + ":" + lastUpdated.getTime
-
-    def inc = copy(progress = progress + 1, lastUpdated = new Date)
-  }
 
   override def toString: String = {
 
@@ -68,7 +75,7 @@ class Tasks(tasksSeq: (String, String, String)*) {
 
     val formatted = tasks.zipWithIndex map {
       case (t, i) => {
-        val num = padToLeft((i+1).toString, tasks.size.toString.length, ' ')
+        val num = padToLeft((i + 1).toString, tasks.size.toString.length, ' ')
         t.copy(name = num + ". " + t.name.padTo(max, '.'))
       }
     }
@@ -105,8 +112,8 @@ object Tasks extends App {
     tasks
   }
 
-  def list() {
-    println(tasks)
+  def list(t: Tasks = tasks) {
+    println(t)
   }
 
   @tailrec
@@ -118,13 +125,15 @@ object Tasks extends App {
       case ":q" => println("buy")
       case ":l" => list(); listen()
       case ":drop" => tasks.clear(); save(tasks); listen()
+      case ":date" => list(tasks.byDate); listen()
       case n if n.matches(number) =>
         tasks.inc(toInt(n)); save(tasks); list(); listen()
-      case n if n.matches("!" +number) =>
+      case n if n.matches("!" + number) =>
         tasks.remove(toInt(n.drop(1))); save(tasks); list(); listen()
-      case n if n.matches(number+"><"+number) =>
+      case n if n.matches(number + "><" + number) =>
         val (n1, n2) = n.splitAt(n.indexOf("><"))
-        tasks.swap(toInt(n1), toInt(n2.drop(2))); save(tasks); list(); listen()
+        tasks.swap(toInt(n1), toInt(n2.drop(2)))
+        save(tasks); list(); listen()
       case name if name.matches("\".+\"") =>
         tasks add name.stripPrefix("\"").stripSuffix("\""); save(tasks); list(); listen()
       case _ => listen()
