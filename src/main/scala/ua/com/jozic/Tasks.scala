@@ -4,21 +4,28 @@ import annotation.tailrec
 import java.io._
 import io.Source
 import java.util.Date
-import java.text.DateFormat
+import java.text.SimpleDateFormat
+import Priorities._
 
 /**
  * @author jozic
  * @since 11/16/12
  */
-case class Task(name: String, progress: Int, lastUpdated: Date = new Date) {
+case class Task(name: String, progress: Int, lastUpdated: Date = new Date, priority: Priority = Medium) {
 
-  def date = java.text.DateFormat.getDateInstance(DateFormat.MEDIUM).format(lastUpdated)
+  val formatter = new SimpleDateFormat("MMM dd, yyyy")
 
-  override def toString: String = name + " (" + date + ") : " + "".padTo(progress, '#')
+  def date = formatter.format(lastUpdated)
+
+  override def toString: String = s"$priority $name ( $date ) : ${"".padTo(progress, '#')}"
 
   def toStoreString: String = name + ":" + progress + ":" + lastUpdated.getTime
 
   def inc = copy(progress = progress + 1, lastUpdated = new Date)
+
+  def << = copy(priority = Priorities.previous(priority))
+
+  def >> = copy(priority = Priorities.next(priority))
 }
 
 class Tasks(tasksSeq: Array[Task]) {
@@ -61,12 +68,19 @@ class Tasks(tasksSeq: Array[Task]) {
     this
   }
 
+  def changePriority(i: Int, up: Boolean) = {
+    for (t <- tasks.lift(i)) tasks(i) = if (up) t.>> else t.<<
+    this
+  }
+
   def clear() = {
     tasks.clear()
     this
   }
 
-  def byDate = new Tasks(tasks.toArray.sortBy(_.lastUpdated))
+  def byDate = new Tasks(tasks.toArray.sortBy(_.lastUpdated).reverse)
+
+  def byPriority = new Tasks(tasks.toArray.sortBy(_.priority))
 
 
   override def toString: String = {
@@ -76,7 +90,7 @@ class Tasks(tasksSeq: Array[Task]) {
     val formatted = tasks.zipWithIndex map {
       case (t, i) => {
         val num = padToLeft((i + 1).toString, tasks.size.toString.length, ' ')
-        t.copy(name = num + ". " + t.name.padTo(max, '.'))
+        t.copy(name = num + "." + t.name.padTo(max, '.'))
       }
     }
     formatted.mkString("\n")
@@ -125,15 +139,20 @@ object Tasks extends App {
       case ":q" => println("buy")
       case ":l" => list(); listen()
       case ":drop" => tasks.clear(); save(tasks); listen()
-      case ":date" => list(tasks.byDate); listen()
+      case ":date" => list(tasks.byDate); listen() //todo fix order
+      case ":prio" => list(tasks.byPriority); listen() //todo fix order
       case n if n.matches(number) =>
         tasks.inc(toInt(n)); save(tasks); list(); listen()
+      case n if n.matches(number + ">>") =>
+        tasks.changePriority(toInt(n.dropRight(2)), up = true); save(tasks); list(); listen()
+      case n if n.matches(number + "<<") =>
+        tasks.changePriority(toInt(n.dropRight(2)), up = false); save(tasks); list(); listen()
       case n if n.matches("!" + number) =>
         tasks.remove(toInt(n.drop(1))); save(tasks); list(); listen()
-      case n if n.matches(number + "><" + number) =>
+      case n if n.matches(s"$number><$number") =>
         val (n1, n2) = n.splitAt(n.indexOf("><"))
         tasks.swap(toInt(n1), toInt(n2.drop(2)))
-        save(tasks); list(); listen()
+        save(tasks);list();listen()
       case name if name.matches("\".+\"") =>
         tasks add name.stripPrefix("\"").stripSuffix("\""); save(tasks); list(); listen()
       case _ => listen()
