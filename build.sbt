@@ -1,3 +1,7 @@
+import AssemblyKeys._
+
+assemblySettings
+
 organization := "jozic"
 
 name := "tasks"
