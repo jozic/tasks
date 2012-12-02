@@ -29,4 +29,6 @@ object Priorities {
   def next(p: Priority) = values.lift(values.indexOf(p) + 1) getOrElse (p)
 
   def previous(p: Priority) = values.lift(values.indexOf(p) - 1) getOrElse (p)
+
+  def resolve(s: String) = values.find(_.toString == s) getOrElse (Medium)
 }

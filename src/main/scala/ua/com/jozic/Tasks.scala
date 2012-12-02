@@ -19,7 +19,7 @@ case class Task(name: String, progress: Int, lastUpdated: Date = new Date, prior
 
   override def toString: String = s"$priority $name ( $date ) : ${"".padTo(progress, '#')}"
 
-  def toStoreString: String = name + ":" + progress + ":" + lastUpdated.getTime
+  def toStoreString: String = s"$name:$progress:${lastUpdated.getTime}:${priority.toString}"
 
   def inc = copy(progress = progress + 1, lastUpdated = new Date)
 
@@ -35,9 +35,10 @@ class Tasks(tasksSeq: Array[Task]) {
 
   tasksSeq foreach add
 
-  def this(tasksSeq: (String, String, String)*) = this(
+  def this(tasksSeq: (String, String, String, String)*) = this(
     tasksSeq.toArray map {
-      case (name, progress, date) => Task(name, progress.toInt, new Date(date.toLong))
+      case (name, progress, date, priority) =>
+        Task(name, progress.toInt, new Date(date.toLong), Priorities.resolve(priority))
     }
   )
 
@@ -90,7 +91,7 @@ class Tasks(tasksSeq: Array[Task]) {
     val formatted = tasks.zipWithIndex map {
       case (t, i) => {
         val num = padToLeft((i + 1).toString, tasks.size.toString.length, ' ')
-        t.copy(name = num + "." + t.name.padTo(max, '.'))
+        t.copy(name = s"$num.${t.name.padTo(max, '.')}")
       }
     }
     formatted.mkString("\n")
@@ -108,10 +109,12 @@ object Tasks extends App {
     val loaded = if (new File(filename).exists())
       for {
         line <- Source.fromFile(filename).getLines()
-        (name, progressAndDateString) = line.splitAt(line.indexOf(':'))
-        progressAndDate = progressAndDateString.drop(1)
-        (progress, date) = progressAndDate.splitAt(progressAndDate.indexOf(':'))
-      } yield (name, progress, date.drop(1))
+        (name, progressAndDateAndPriorityString) = line.splitAt(line.indexOf(':'))
+        progressAndDatePriority = progressAndDateAndPriorityString.drop(1)
+        (progress, dateAndPriorityString) = progressAndDatePriority.splitAt(progressAndDatePriority.indexOf(':'))
+        dateAndPriority = dateAndPriorityString.drop(1)
+        (date, priorityString) = dateAndPriority.splitAt(dateAndPriority.indexOf(':'))
+      } yield (name, progress, date, priorityString.drop(1))
     else Seq.empty
     new Tasks(loaded.toSeq: _*)
   }
