@@ -17,9 +17,9 @@ case class Task(name: String, progress: Int, lastUpdated: Date = new Date, prior
 
   def date = formatter.format(lastUpdated)
 
-  override def toString: String = s"$priority $name ( $date ) : ${"".padTo(progress, '#')}"
+  override def toString: String = priority + " " + name + " ( " + date + " ) : " + "".padTo(progress, '#')
 
-  def toStoreString: String = s"$name:$progress:${lastUpdated.getTime}:${priority.toString}"
+  def toStoreString: String = name + ":" + progress + ":" + lastUpdated.getTime + ":" + priority.toString
 
   def inc = copy(progress = progress + 1, lastUpdated = new Date)
 
@@ -91,7 +91,7 @@ class Tasks(tasksSeq: Array[Task]) {
     val formatted = tasks.zipWithIndex map {
       case (t, i) => {
         val num = padToLeft((i + 1).toString, tasks.size.toString.length, ' ')
-        t.copy(name = s"$num.${t.name.padTo(max, '.')}")
+        t.copy(name = num + "." + t.name.padTo(max, '.'))
       }
     }
     formatted.mkString("\n")
@@ -152,7 +152,7 @@ object Tasks extends App {
         tasks.changePriority(toInt(n.dropRight(2)), up = false); save(tasks); list(); listen()
       case n if n.matches("!" + number) =>
         tasks.remove(toInt(n.drop(1))); save(tasks); list(); listen()
-      case n if n.matches(s"$number><$number") =>
+      case n if n.matches(number + "><" + number) =>
         val (n1, n2) = n.splitAt(n.indexOf("><"))
         tasks.swap(toInt(n1), toInt(n2.drop(2)))
         save(tasks);list();listen()
