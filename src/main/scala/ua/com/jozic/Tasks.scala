@@ -6,6 +6,7 @@ import io.Source
 import java.util.Date
 import java.text.SimpleDateFormat
 import Priorities._
+import scala.util.control.Exception.ultimately
 
 /**
  * @author jozic
@@ -121,10 +122,8 @@ object Tasks extends App {
 
   def save(tasks: Tasks): Tasks = {
     val writer: FileWriter = new FileWriter(filename)
-    try {
+    ultimately(writer.close()) {
       writer.write(tasks.toStoreString)
-    } finally {
-      writer.close()
     }
     tasks
   }
@@ -133,33 +132,41 @@ object Tasks extends App {
     println(t)
   }
 
+  def saveAndList(t: Tasks = tasks) {
+    list(save(t))
+  }
+
   @tailrec
   def listen() {
     val number = "\\d+"
 
     def toInt(n: String) = n.toInt - 1
     readLine("> ") match {
-      case ":q" => println("buy")
-      case ":l" => list(); listen()
-      case ":drop" => tasks.clear(); save(tasks); listen()
-      case ":date" => list(tasks.byDate); listen() //todo fix order
-      case ":prio" => list(tasks.byPriority); listen() //todo fix order
-      case n if n.matches(number) =>
-        tasks.inc(toInt(n)); save(tasks); list(); listen()
-      case n if n.matches(number + ">>") =>
-        tasks.changePriority(toInt(n.dropRight(2)), up = true); save(tasks); list(); listen()
-      case n if n.matches(number + "<<") =>
-        tasks.changePriority(toInt(n.dropRight(2)), up = false); save(tasks); list(); listen()
-      case n if n.matches("!" + number) =>
-        tasks.remove(toInt(n.drop(1))); save(tasks); list(); listen()
-      case n if n.matches(number + "><" + number) =>
+      case ":q" => println("buy"); sys.exit()
+      case ":l" => list()
+      case ":drop" => save(tasks.clear())
+      case ":date" => list(tasks.byDate) //todo fix order
+      case ":prio" => list(tasks.byPriority) //todo fix order
+      case n if n.matches(number) => saveAndList(tasks.inc(toInt(n)))
+      case n if n.matches(number + ">>") => saveAndList {
+        tasks.changePriority(toInt(n.dropRight(2)), up = true)
+      }
+      case n if n.matches(number + "<<") => saveAndList {
+        tasks.changePriority(toInt(n.dropRight(2)), up = false)
+      }
+      case n if n.matches("!" + number) => saveAndList {
+        tasks.remove(toInt(n.drop(1)))
+      }
+      case n if n.matches(number + "><" + number) => saveAndList {
         val (n1, n2) = n.splitAt(n.indexOf("><"))
         tasks.swap(toInt(n1), toInt(n2.drop(2)))
-        save(tasks);list();listen()
-      case name if name.matches("\".+\"") =>
-        tasks add name.stripPrefix("\"").stripSuffix("\""); save(tasks); list(); listen()
-      case _ => listen()
+      }
+      case name if name.matches("\".+\"") => saveAndList {
+        tasks add name.stripPrefix("\"").stripSuffix("\"")
+      }
+      case _ =>
     }
+    listen()
   }
 
   list()
