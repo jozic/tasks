@@ -5,7 +5,7 @@ import java.io._
 import io.Source
 import java.util.Date
 import java.text.SimpleDateFormat
-import Priorities._
+import Priority._
 import scala.util.control.Exception.ultimately
 
 /**
@@ -24,9 +24,9 @@ case class Task(name: String, progress: Int, lastUpdated: Date = new Date, prior
 
   def inc = copy(progress = progress + 1, lastUpdated = new Date)
 
-  def << = copy(priority = Priorities.previous(priority))
+  def << = copy(priority = previous(priority))
 
-  def >> = copy(priority = Priorities.next(priority))
+  def >> = copy(priority = next(priority))
 }
 
 class Tasks(tasksSeq: Array[Task]) {
@@ -39,7 +39,7 @@ class Tasks(tasksSeq: Array[Task]) {
   def this(tasksSeq: (String, String, String, String)*) = this(
     tasksSeq.toArray map {
       case (name, progress, date, priority) =>
-        Task(name, progress.toInt, new Date(date.toLong), Priorities.resolve(priority))
+        Task(name, progress.toInt, new Date(date.toLong), resolve(priority))
     }
   )
 
@@ -84,6 +84,7 @@ class Tasks(tasksSeq: Array[Task]) {
 
   def byPriority = new Tasks(tasks.toArray.sortBy(_.priority))
 
+  def byProgress = new Tasks(tasks.toArray.sortBy(-_.progress))
 
   override def toString: String = {
 
@@ -147,6 +148,7 @@ object Tasks extends App {
       case ":drop" => save(tasks.clear())
       case ":date" => list(tasks.byDate) //todo fix order
       case ":prio" => list(tasks.byPriority) //todo fix order
+      case ":prg" => list(tasks.byProgress) //todo fix order
       case n if n.matches(number) => saveAndList(tasks.inc(toInt(n)))
       case n if n.matches(number + ">>") => saveAndList {
         tasks.changePriority(toInt(n.dropRight(2)), up = true)

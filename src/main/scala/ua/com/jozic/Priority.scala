@@ -4,9 +4,10 @@ package ua.com.jozic
  * @author jozic
  * @since 12/1/12
  */
-object Priorities {
 
-  sealed trait Priority
+sealed trait Priority
+
+object Priority {
 
   case object Low extends Priority {
     override def toString = "▼"
