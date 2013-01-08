@@ -18,7 +18,7 @@ case class Task(name: String, progress: Int, lastUpdated: Date = new Date, prior
 
   def date = formatter.format(lastUpdated)
 
-  override def toString: String = priority + " " + name + " ( " + date + " ) : " + "".padTo(progress, '#')
+  override def toString: String = s"$priority $name ( $date ) : ${"".padTo(progress, '#')}"
 
   def inc = copy(progress = progress + 1, lastUpdated = new Date)
 
@@ -91,7 +91,7 @@ class Tasks(tasksSeq: Array[Task]) {
     val formatted = tasks.zipWithIndex map {
       case (t, i) => {
         val num = padToLeft((i + 1).toString, tasks.size.toString.length, ' ')
-        t.copy(name = num + "." + t.name.padTo(max, '.'))
+        t.copy(name = s"$num.${t.name.padTo(max, '.')}")
       }
     }
     formatted.mkString("\n")
@@ -122,7 +122,7 @@ object Tasks extends App {
     new Tasks(loaded.toSeq: _*)
   }
 
-  def toStoreString(task: Task): String = escapeColon(task.name) + ":" + task.progress + ":" + task.lastUpdated.getTime + ":" + task.priority.toString
+  def toStoreString(task: Task): String = s"${escapeColon(task.name)}:${task.progress}:${task.lastUpdated.getTime}:${task.priority.toString}"
 
   def toStoreString(tasks: Tasks): String = tasks.tasks.map(toStoreString).mkString("\n")
 
