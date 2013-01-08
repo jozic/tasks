@@ -20,8 +20,6 @@ case class Task(name: String, progress: Int, lastUpdated: Date = new Date, prior
 
   override def toString: String = priority + " " + name + " ( " + date + " ) : " + "".padTo(progress, '#')
 
-  def toStoreString: String = name + ":" + progress + ":" + lastUpdated.getTime + ":" + priority.toString
-
   def inc = copy(progress = progress + 1, lastUpdated = new Date)
 
   def << = copy(priority = previous(priority))
@@ -99,13 +97,16 @@ class Tasks(tasksSeq: Array[Task]) {
     formatted.mkString("\n")
   }
 
-  def toStoreString: String = tasks.map(_.toStoreString).mkString("\n")
 }
 
 object Tasks extends App {
 
   val filename = "tasks.lst"
   val tasks = load()
+
+  def unEscapeColon(s: String) = s.replaceAll("__colon__", ":")
+
+  def escapeColon(s: String) = s.replaceAll(":", "__colon__")
 
   def load(): Tasks = {
     val loaded = if (new File(filename).exists())
@@ -116,15 +117,20 @@ object Tasks extends App {
         (progress, dateAndPriorityString) = progressAndDatePriority.splitAt(progressAndDatePriority.indexOf(':'))
         dateAndPriority = dateAndPriorityString.drop(1)
         (date, priorityString) = dateAndPriority.splitAt(dateAndPriority.indexOf(':'))
-      } yield (name, progress, date, priorityString.drop(1))
+      } yield (unEscapeColon(name), progress, date, priorityString.drop(1))
     else Seq.empty
     new Tasks(loaded.toSeq: _*)
   }
 
+  def toStoreString(task: Task): String = escapeColon(task.name) + ":" + task.progress + ":" + task.lastUpdated.getTime + ":" + task.priority.toString
+
+  def toStoreString(tasks: Tasks): String = tasks.tasks.map(toStoreString).mkString("\n")
+
   def save(tasks: Tasks): Tasks = {
+
     val writer: FileWriter = new FileWriter(filename)
     ultimately(writer.close()) {
-      writer.write(tasks.toStoreString)
+      writer.write(toStoreString(tasks))
     }
     tasks
   }
