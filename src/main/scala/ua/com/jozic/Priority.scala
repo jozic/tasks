@@ -1,10 +1,5 @@
 package ua.com.jozic
 
-/**
- * @author jozic
- * @since 12/1/12
- */
-
 sealed trait Priority
 
 object Priority {

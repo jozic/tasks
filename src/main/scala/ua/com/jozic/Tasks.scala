@@ -8,10 +8,6 @@ import java.text.SimpleDateFormat
 import Priority._
 import scala.util.control.Exception.ultimately
 
-/**
- * @author jozic
- * @since 11/16/12
- */
 case class Task(name: String, progress: Int, lastUpdated: Date = new Date, priority: Priority = Medium) {
 
   val formatter = new SimpleDateFormat("MMM dd, yyyy")
@@ -143,6 +139,30 @@ object Tasks extends App {
     list(save(t))
   }
 
+  def usage: String =
+    """ Tracks a number of ongoing small tasks with the progress relative to each other
+    | usage:
+    :q => exit
+    :l => show list
+    :h => show this message
+    :drop => clear tasks list in file
+    :date => show list sorted by date
+    :prio => show list sorted by priority
+    :prg => show list sorted by progress
+    `index` => increase the progress of task identified by index.
+          Example: 5
+    `index`>> => increase the priority of the task identified by index.
+          Example: 5>>
+    `index`<< => decrease the priority of the task identified by index.
+          Example: 5<<
+    !`index` => removes the task identified by index.
+          Example: !5
+    `index1`><`index2` => swap tasks identified by index1 and index2.
+          Example: 2><5
+    "some text" => creates new task with the name `some text` and appends it to the tasks list.
+          Example: "my new task"
+    """.stripMargin
+
   @tailrec
   def listen() {
     val number = "\\d+"
@@ -151,6 +171,7 @@ object Tasks extends App {
     readLine("> ") match {
       case ":q" => println("buy"); sys.exit()
       case ":l" => list()
+      case ":h" => println(usage)
       case ":drop" => save(tasks.clear())
       case ":date" => list(tasks.byDate) //todo fix order
       case ":prio" => list(tasks.byPriority) //todo fix order
