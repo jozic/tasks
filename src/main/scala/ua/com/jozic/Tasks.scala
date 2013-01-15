@@ -23,14 +23,14 @@ case class Task(name: String, progress: Int, lastUpdated: Date = new Date, prior
   def >> = copy(priority = next(priority))
 }
 
-class Tasks(tasksSeq: Array[Task]) {
+class Tasks(val listName: String, tasksSeq: Array[Task]) {
 
   private val tasks = collection.mutable.ArrayBuffer[Task]()
   private var max = 0
 
   tasksSeq foreach add
 
-  def this(tasksSeq: (String, String, String, String)*) = this(
+  def this(listName: String, tasksSeq: (String, String, String, String)*) = this(listName,
     tasksSeq.toArray map {
       case (name, progress, date, priority) =>
         Task(name, progress.toInt, new Date(date.toLong), resolve(priority))
@@ -74,11 +74,11 @@ class Tasks(tasksSeq: Array[Task]) {
     this
   }
 
-  def byDate = new Tasks(tasks.toArray.sortBy(_.lastUpdated).reverse)
+  def byDate = new Tasks(listName, tasks.toArray.sortBy(_.lastUpdated).reverse)
 
-  def byPriority = new Tasks(tasks.toArray.sortBy(_.priority))
+  def byPriority = new Tasks(listName, tasks.toArray.sortBy(_.priority))
 
-  def byProgress = new Tasks(tasks.toArray.sortBy(-_.progress))
+  def byProgress = new Tasks(listName, tasks.toArray.sortBy(-_.progress))
 
   override def toString: String = {
 
@@ -97,14 +97,15 @@ class Tasks(tasksSeq: Array[Task]) {
 
 object Tasks extends App {
 
-  val filename = "tasks.lst"
-  val tasks = load()
+  val EXTENSION = ".lst"
+  val DEFAULT_FILE_NAME = s"tasks$EXTENSION"
+  private var tasks = load(DEFAULT_FILE_NAME)
 
   def unEscapeColon(s: String) = s.replaceAll("__colon__", ":")
 
   def escapeColon(s: String) = s.replaceAll(":", "__colon__")
 
-  def load(): Tasks = {
+  def load(filename: String): Tasks = {
     val loaded = if (new File(filename).exists())
       for {
         line <- Source.fromFile(filename).getLines()
@@ -115,7 +116,7 @@ object Tasks extends App {
         (date, priorityString) = dateAndPriority.splitAt(dateAndPriority.indexOf(':'))
       } yield (unEscapeColon(name), progress, date, priorityString.drop(1))
     else Seq.empty
-    new Tasks(loaded.toSeq: _*)
+    new Tasks(filename.stripSuffix(EXTENSION), loaded.toSeq: _*)
   }
 
   def toStoreString(task: Task): String = s"${escapeColon(task.name)}:${task.progress}:${task.lastUpdated.getTime}:${task.priority.toString}"
@@ -124,7 +125,7 @@ object Tasks extends App {
 
   def save(tasks: Tasks): Tasks = {
 
-    val writer: FileWriter = new FileWriter(filename)
+    val writer: FileWriter = new FileWriter(tasks.listName + EXTENSION)
     ultimately(writer.close()) {
       writer.write(toStoreString(tasks))
     }
@@ -135,20 +136,39 @@ object Tasks extends App {
     println(t)
   }
 
+  def listLists() {
+    val files: Array[File] = new File(".").listFiles(new FilenameFilter {
+      def accept(dir: File, name: String): Boolean = name.endsWith(".lst")
+    })
+    println(files map (_.getName.stripSuffix(EXTENSION)) mkString ("\n"))
+  }
+
   def saveAndList(t: Tasks = tasks) {
     list(save(t))
   }
 
+  def use(fileName: String) {
+    new File(fileName + EXTENSION) match {
+      case f if f.exists() && f.isFile =>
+        tasks = load(f.getName)
+        list()
+      case notFound => println(s"File ${notFound.getName} is not found. Using old list ...")
+    }
+  }
+
   def usage: String =
     """ Tracks a number of ongoing small tasks with the progress relative to each other
-    | usage:
+      | usage:
     :q => exit
-    :l => show list
+    :l => show current list
+    :lists => show all lists in directory
+    :use <list_name> => load new list identified by list_name
+      Example: :use work
     :h => show this message
-    :drop => clear tasks list in file
-    :date => show list sorted by date
-    :prio => show list sorted by priority
-    :prg => show list sorted by progress
+    :drop => clear current tasks list in file
+    :date => show current list sorted by date
+    :prio => show current list sorted by priority
+    :prg => show current list sorted by progress
     `index` => increase the progress of task identified by index.
           Example: 5
     `index`>> => increase the priority of the task identified by index.
@@ -168,9 +188,11 @@ object Tasks extends App {
     val number = "\\d+"
 
     def toInt(n: String) = n.toInt - 1
-    readLine("> ") match {
+    readLine(s"${tasks.listName}> ") match {
       case ":q" => println("buy"); sys.exit()
       case ":l" => list()
+      case ":lists" => listLists()
+      case useName if useName.matches(":use .*") => use(useName.stripPrefix(":use "))
       case ":h" => println(usage)
       case ":drop" => save(tasks.clear())
       case ":date" => list(tasks.byDate) //todo fix order
