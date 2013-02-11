@@ -152,7 +152,11 @@ object Tasks extends App {
       case f if f.exists() && f.isFile =>
         tasks = load(f.getName)
         list()
-      case notFound => println(s"File ${notFound.getName} is not found. Using old list ...")
+      case notFound => readLine(s"File ${notFound.getName} is not found. Do you want to create it? (y/n):") match {
+        case "y" if notFound.createNewFile() => use(fileName)
+        case "y" => println("Can't create new file. Using old list ...")
+        case _ => println("Using old list ...")
+      }
     }
   }
 
