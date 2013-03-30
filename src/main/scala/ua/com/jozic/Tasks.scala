@@ -7,6 +7,7 @@ import java.util.Date
 import java.text.SimpleDateFormat
 import Priority._
 import scala.util.control.Exception.ultimately
+import jline.console.ConsoleReader
 
 case class Task(name: String, progress: Int, lastUpdated: Date = new Date, priority: Priority = Medium) {
 
@@ -40,15 +41,17 @@ class Tasks(val listName: String, tasksSeq: Array[Task]) {
   def add(name: String): Tasks = add(Task(name, 0))
 
   def remove(i: Int) = {
-    tasks.remove(i)
+    for (_ <- tasks.lift(i)) tasks.remove(i)
     this
   }
 
   def swap(i1: Int, i2: Int) = {
-    if (tasks.isDefinedAt(i1) && tasks.isDefinedAt(i2)) {
-      val tmp = tasks(i1)
-      tasks(i1) = tasks(i2)
-      tasks(i2) = tmp
+    for {
+      t1 <- tasks.lift(i1)
+      t2 <- tasks.lift(i2)
+    } {
+      tasks(i2) = t1
+      tasks(i1) = t2
     }
     this
   }
@@ -100,6 +103,8 @@ object Tasks extends App {
   val EXTENSION = ".lst"
   val DEFAULT_FILE_NAME = s"tasks$EXTENSION"
   private var tasks = load(DEFAULT_FILE_NAME)
+
+  val reader = new ConsoleReader()
 
   def unEscapeColon(s: String) = s.replaceAll("__colon__", ":")
 
@@ -179,8 +184,8 @@ object Tasks extends App {
           Example: 5>>
     `index`<< => decrease the priority of the task identified by index.
           Example: 5<<
-    !`index` => removes the task identified by index.
-          Example: !5
+    -`index` => removes the task identified by index.
+          Example: -5
     `index1`><`index2` => swap tasks identified by index1 and index2.
           Example: 2><5
     "some text" => creates new task with the name `some text` and appends it to the tasks list.
@@ -192,7 +197,8 @@ object Tasks extends App {
     val number = "\\d+"
 
     def toInt(n: String) = n.toInt - 1
-    readLine(s"${tasks.listName}> ") match {
+
+    reader.readLine(s"${tasks.listName}> ") match {
       case ":q" => println("buy"); sys.exit()
       case ":l" => list()
       case ":lists" => listLists()
@@ -209,7 +215,7 @@ object Tasks extends App {
       case n if n.matches(number + "<<") => saveAndList {
         tasks.changePriority(toInt(n.dropRight(2)), up = false)
       }
-      case n if n.matches("!" + number) => saveAndList {
+      case n if n.matches("-" + number) => saveAndList {
         tasks.remove(toInt(n.drop(1)))
       }
       case n if n.matches(number + "><" + number) => saveAndList {
