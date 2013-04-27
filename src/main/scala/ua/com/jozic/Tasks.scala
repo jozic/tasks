@@ -157,11 +157,21 @@ object Tasks extends App {
       case f if f.exists() && f.isFile =>
         tasks = load(f.getName)
         list()
-      case notFound => readLine(s"File ${notFound.getName} is not found. Do you want to create it? (y/n):") match {
+      case notFound => readLine(s"List $fileName is not found. Do you want to create it? (y/n):") match {
         case "y" if notFound.createNewFile() => use(fileName)
-        case "y" => println("Can't create new file. Using old list ...")
+        case "y" => println("Can't create new list. Using old list ...")
         case _ => println("Using old list ...")
       }
+    }
+  }
+
+  def drop(fileName: String) {
+    if (tasks.listName == fileName)
+      println("Can't drop current list. Switch to another list with :use first.")
+    else new File(fileName + EXTENSION) match {
+      case f if f.exists() && f.isFile && f.delete() => println(s"List $fileName has been dropped.")
+      case f if f.exists() && f.isFile => println(s"Can't drop list $fileName :(")
+      case notFound => println(s"List $fileName is not found")
     }
   }
 
@@ -173,8 +183,9 @@ object Tasks extends App {
     :lists => show all lists in directory
     :use <list_name> => load new list identified by list_name
       Example: :use work
+    :drop <list_name> => drop list identified by list_name
     :h => show this message
-    :drop => clear current tasks list in file
+    :clr => clear current tasks list in file
     :date => show current list sorted by date
     :prio => show current list sorted by priority
     :prg => show current list sorted by progress
@@ -203,8 +214,9 @@ object Tasks extends App {
       case ":l" => list()
       case ":lists" => listLists()
       case useName if useName.matches(":use .*") => use(useName.stripPrefix(":use "))
+      case dropName if dropName.matches(":drop .*") => drop(dropName.stripPrefix(":drop "))
       case ":h" => println(usage)
-      case ":drop" => save(tasks.clear())
+      case ":clr" => save(tasks.clear())
       case ":date" => list(tasks.byDate) //todo fix order
       case ":prio" => list(tasks.byPriority) //todo fix order
       case ":prg" => list(tasks.byProgress) //todo fix order
