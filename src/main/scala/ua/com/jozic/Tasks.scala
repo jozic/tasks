@@ -8,6 +8,9 @@ import java.text.SimpleDateFormat
 import Priority._
 import scala.util.control.Exception.ultimately
 import jline.console.ConsoleReader
+import jline.console.completer.{ArgumentCompleter, StringsCompleter, AggregateCompleter}
+import java.util
+import scala.collection.JavaConverters._
 
 case class Task(name: String, progress: Int, lastUpdated: Date = new Date, priority: Priority = Medium) {
 
@@ -77,6 +80,8 @@ class Tasks(val listName: String, tasksSeq: Array[Task]) {
     this
   }
 
+  def size = tasks.size
+
   def byDate = new Tasks(listName, tasks.toArray.sortBy(_.lastUpdated).reverse)
 
   def byPriority = new Tasks(listName, tasks.toArray.sortBy(_.priority))
@@ -88,10 +93,9 @@ class Tasks(val listName: String, tasksSeq: Array[Task]) {
     def padToLeft(s: String, len: Int, c: Char) = "".padTo(len - s.length, c) + s
 
     val formatted = tasks.zipWithIndex map {
-      case (t, i) => {
+      case (t, i) =>
         val num = padToLeft((i + 1).toString, tasks.size.toString.length, ' ')
         t.copy(name = s"$num.${t.name.padTo(max, '.')}")
-      }
     }
     formatted.mkString("\n")
   }
@@ -104,7 +108,24 @@ object Tasks extends App {
   val DEFAULT_FILE_NAME = s"tasks$EXTENSION"
   private var tasks = load(DEFAULT_FILE_NAME)
 
-  val reader = new ConsoleReader()
+  val listArgCommands = Seq(":use", ":drop")
+
+  val noArgsCommands = Seq(":q", ":l", ":lists", ":h", ":clr", ":date", ":prio", ":prg")
+
+  val reader = {
+    val reader: ConsoleReader = new ConsoleReader()
+    reader.addCompleter(new AggregateCompleter(new StringsCompleter(noArgsCommands.asJava),
+      new ArgumentCompleter(new StringsCompleter(listArgCommands.asJava), new ListNamesCompleter)))
+    reader
+  }
+
+  private class ListNamesCompleter extends StringsCompleter {
+    override def complete(buffer: String, cursor: Int, candidates: util.List[CharSequence]) = {
+      getStrings.clear()
+      getStrings.addAll(availableLists.toSeq.asJava)
+      super.complete(buffer, cursor, candidates)
+    }
+  }
 
   def unEscapeColon(s: String) = s.replaceAll("__colon__", ":")
 
@@ -142,10 +163,14 @@ object Tasks extends App {
   }
 
   def listLists() {
+    println(availableLists.mkString("\n"))
+  }
+
+  private def availableLists: Array[String] = {
     val files: Array[File] = new File(".").listFiles(new FilenameFilter {
       def accept(dir: File, name: String): Boolean = name.endsWith(".lst")
     })
-    println(files map (_.getName.stripSuffix(EXTENSION)) mkString ("\n"))
+    files map (_.getName.stripSuffix(EXTENSION))
   }
 
   def saveAndList(t: Tasks = tasks) {
@@ -159,8 +184,8 @@ object Tasks extends App {
         list()
       case notFound => readLine(s"List $fileName is not found. Do you want to create it? (y/n):") match {
         case "y" if notFound.createNewFile() => use(fileName)
-        case "y" => println("Can't create new list. Using old list ...")
-        case _ => println("Using old list ...")
+        case "y" => println("Can't create new list. Using old list...")
+        case _ => println("Using old list...")
       }
     }
   }
@@ -203,23 +228,38 @@ object Tasks extends App {
           Example: "my new task"
     """.stripMargin
 
+
+  object Commands {
+    def spaces(s: String) = s"\\s*$s\\s*"
+
+    val Quit = spaces(":q")
+    val ListItems = spaces(":l")
+    val ListLists = spaces(":lists")
+    val Help = spaces(":h")
+    val ClearList = spaces(":clr")
+    val SortByDate = spaces(":date")
+    val SortByPriority = spaces(":prio")
+    val SortByProgress = spaces(":prg")
+  }
+
   @tailrec
   def listen() {
     val number = "\\d+"
 
     def toInt(n: String) = n.toInt - 1
 
+    import Commands._
     reader.readLine(s"${tasks.listName}> ") match {
-      case ":q" => println("buy"); sys.exit()
-      case ":l" => list()
-      case ":lists" => listLists()
-      case useName if useName.matches(":use .*") => use(useName.stripPrefix(":use "))
-      case dropName if dropName.matches(":drop .*") => drop(dropName.stripPrefix(":drop "))
-      case ":h" => println(usage)
-      case ":clr" => save(tasks.clear())
-      case ":date" => list(tasks.byDate) //todo fix order
-      case ":prio" => list(tasks.byPriority) //todo fix order
-      case ":prg" => list(tasks.byProgress) //todo fix order
+      case q if q.matches(Quit) => println("buy"); sys.exit()
+      case l if l.matches(ListItems) => list()
+      case lists if lists.matches(ListLists) => listLists()
+      case useName if useName.matches(":use \\S+") => use(useName.stripPrefix(":use "))
+      case dropName if dropName.matches(":drop \\S+") => drop(dropName.stripPrefix(":drop "))
+      case h if h.matches(Help) => println(usage)
+      case clr if clr.matches(ClearList) => save(tasks.clear())
+      case date if date.matches(SortByDate) => list(tasks.byDate) //todo fix order
+      case prio if prio.matches(SortByPriority) => list(tasks.byPriority) //todo fix order
+      case prg if prg.matches(SortByProgress) => list(tasks.byProgress) //todo fix order
       case n if n.matches(number) => saveAndList(tasks.inc(toInt(n)))
       case n if n.matches(number + ">>") => saveAndList {
         tasks.changePriority(toInt(n.dropRight(2)), up = true)
