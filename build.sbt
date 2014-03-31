@@ -10,7 +10,7 @@ crossPaths := false
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-Xfatal-warnings")
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.0-RC3"
 
 libraryDependencies += "jline" % "jline" % "2.10"
 
