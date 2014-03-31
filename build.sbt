@@ -4,7 +4,7 @@ organization := "jozic"
 
 name := "tasks"
 
-version := "0.3"
+version := "0.3.1"
 
 crossPaths := false
 
