@@ -1,16 +1,18 @@
-package ua.com.jozic
+package com.daodecode.tasks
 
-import annotation.tailrec
 import java.io._
-import io.Source
-import java.util.Date
 import java.text.SimpleDateFormat
-import Priority._
-import scala.util.control.Exception.ultimately
-import jline.console.ConsoleReader
-import jline.console.completer.{ArgumentCompleter, StringsCompleter, AggregateCompleter}
 import java.util
+import java.util.Date
+
+import com.daodecode.tasks.Priority._
+import jline.console.ConsoleReader
+import jline.console.completer.{AggregateCompleter, ArgumentCompleter, StringsCompleter}
+
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.io.Source
+import scala.util.control.Exception.ultimately
 import scala.util.matching.Regex
 
 case class Task(name: String, progress: Int, lastUpdated: Date = new Date, priority: Priority = Medium) {
@@ -44,12 +46,12 @@ class Tasks(val listName: String, tasksSeq: Array[Task]) {
 
   def add(name: String): Tasks = add(Task(name, 0))
 
-  def remove(i: Int) = {
+  def remove(i: Int): Tasks = {
     for (_ <- tasks.lift(i)) tasks.remove(i)
     this
   }
 
-  def swap(i1: Int, i2: Int) = {
+  def swap(i1: Int, i2: Int): Tasks = {
     for {
       t1 <- tasks.lift(i1)
       t2 <- tasks.lift(i2)
@@ -66,22 +68,22 @@ class Tasks(val listName: String, tasksSeq: Array[Task]) {
     this
   }
 
-  def inc(i: Int) = {
+  def inc(i: Int): Tasks = {
     for (t <- tasks.lift(i)) tasks(i) = t.inc
     this
   }
 
-  def changePriority(i: Int, up: Boolean) = {
+  def changePriority(i: Int, up: Boolean): Tasks = {
     for (t <- tasks.lift(i)) tasks(i) = if (up) t.>> else t.<<
     this
   }
 
-  def clear() = {
+  def clear(): Tasks = {
     tasks.clear()
     this
   }
 
-  def size = tasks.size
+  def size: Int = tasks.size
 
   def byDate = new Tasks(listName, tasks.toArray.sortBy(_.lastUpdated).reverse)
 
@@ -129,9 +131,9 @@ object Tasks extends App {
     }
   }
 
-  def unEscapeColon(s: String) = s.replaceAll("__colon__", ":")
+  private def unEscapeColon(s: String) = s.replaceAll("__colon__", ":")
 
-  def escapeColon(s: String) = s.replaceAll(":", "__colon__")
+  private def escapeColon(s: String) = s.replaceAll(":", "__colon__")
 
   def load(filename: String): Tasks = {
     val loaded = if (new File(filename).exists())
@@ -152,7 +154,6 @@ object Tasks extends App {
   def toStoreString(tasks: Tasks): String = tasks.tasks.map(toStoreString).mkString("\n")
 
   def save(tasks: Tasks): Tasks = {
-
     val writer: FileWriter = new FileWriter(tasks.listName + EXTENSION)
     ultimately(writer.close()) {
       writer.write(toStoreString(tasks))
@@ -160,11 +161,11 @@ object Tasks extends App {
     tasks
   }
 
-  def list(t: Tasks = tasks) {
+  def list(t: Tasks = tasks): Unit = {
     println(t)
   }
 
-  def listLists() {
+  def listLists(): Unit = {
     println(availableLists.mkString("\n"))
   }
 
@@ -175,15 +176,14 @@ object Tasks extends App {
     files map (_.getName.stripSuffix(EXTENSION))
   }
 
-  def saveAndList(t: Tasks = tasks) {
+  def saveAndList(t: Tasks = tasks): Unit = {
     list(save(t))
   }
 
-  def use(fileName: String) {
+  def use(fileName: String): Unit = {
     new File(fileName + EXTENSION) match {
       case f if f.exists() && f.isFile =>
         tasks = load(f.getName)
-        list()
       case notFound => reader.readLine(s"List $fileName is not found. Do you want to create it? (y/n):") match {
         case "y" if notFound.createNewFile() => use(fileName)
         case "y" => println("Can't create new list. Using old list...")
@@ -192,7 +192,7 @@ object Tasks extends App {
     }
   }
 
-  def drop(fileName: String) {
+  def drop(fileName: String): Unit = {
     if (tasks.listName == fileName)
       println(s"Can't drop current list. Switch to another list with ${Commands.Use} first.")
     else new File(fileName + EXTENSION) match {
@@ -261,7 +261,7 @@ object Tasks extends App {
   }
 
   @tailrec
-  def listen() {
+  def listen(): Unit = {
     def toInt(n: String) = n.toInt - 1
 
     import Commands._
@@ -270,7 +270,7 @@ object Tasks extends App {
       case Quit() => println("buy"); sys.exit()
       case ListItems() => list()
       case ListLists() => listLists()
-      case Use(listName) => use(listName)
+      case Use(listName) => use(listName); list()
       case Drop(listName) => drop(listName)
       case Help() => println(usage)
       case ClearList() => save(tasks.clear())
@@ -288,6 +288,7 @@ object Tasks extends App {
     listen()
   }
 
+  args.lift(0).foreach(use)
   list()
   listen()
 }

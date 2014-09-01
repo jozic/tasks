@@ -1,23 +1,27 @@
-import AssemblyKeys._
+import sbtassembly.Plugin.AssemblyKeys._
+import sbtassembly.Plugin._
 
-organization := "jozic"
+
+organization := "com.daodecode"
 
 name := "tasks"
 
-version := "0.3.1"
+version := "0.4.0"
 
 crossPaths := false
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-Xfatal-warnings")
 
-scalaVersion := "2.11.0-RC3"
+scalaVersion := "2.11.2"
 
-libraryDependencies += "jline" % "jline" % "2.10"
+libraryDependencies += "jline" % "jline" % "2.12"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.2" % "test"
 
 assemblySettings
 
 assembleArtifact in packageScala := false
 
 jarName in assembly := s"${name.value}-${version.value}.jar"
+
+initialCommands in console := "import com.daodecode.tasks._"

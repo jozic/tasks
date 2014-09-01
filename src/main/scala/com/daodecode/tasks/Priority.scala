@@ -1,4 +1,4 @@
-package ua.com.jozic
+package com.daodecode.tasks
 
 sealed trait Priority
 
@@ -22,9 +22,9 @@ object Priority {
 
   val values = List(Low, Medium, High)
 
-  def next(p: Priority) = values.lift(values.indexOf(p) + 1) getOrElse (p)
+  def next(p: Priority) = values.lift(values.indexOf(p) + 1) getOrElse p
 
-  def previous(p: Priority) = values.lift(values.indexOf(p) - 1) getOrElse (p)
+  def previous(p: Priority) = values.lift(values.indexOf(p) - 1) getOrElse p
 
-  def resolve(s: String) = values.find(_.toString == s) getOrElse (Medium)
+  def resolve(s: String) = values.find(_.toString == s) getOrElse Medium
 }
