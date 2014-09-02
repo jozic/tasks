@@ -6,7 +6,7 @@ organization := "com.daodecode"
 
 name := "tasks"
 
-version := "0.4.0"
+version := "0.4.1"
 
 crossPaths := false
 

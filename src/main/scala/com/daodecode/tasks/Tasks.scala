@@ -91,6 +91,8 @@ class Tasks(val listName: String, tasksSeq: Array[Task]) {
 
   def byProgress = new Tasks(listName, tasks.toArray.sortBy(-_.progress))
 
+  def filter(pattern: String) = new Tasks(listName, tasks.filter(_.name.matches(pattern)).toArray)
+
   override def toString: String = {
 
     def padToLeft(s: String, len: Int, c: Char) = "".padTo(len - s.length, c) + s
@@ -161,8 +163,8 @@ object Tasks extends App {
     tasks
   }
 
-  def list(t: Tasks = tasks): Unit = {
-    println(t)
+  def list(t: Tasks = tasks, pattern: String = ".*"): Unit = {
+    println(t.filter(pattern))
   }
 
   def listLists(): Unit = {
@@ -207,6 +209,8 @@ object Tasks extends App {
       | usage:
     ${Commands.Quit} => exit
     ${Commands.ListItems} => show current list
+    `/<regex>` => show only items from current list that match given regex
+          Example: /dev.*
     ${Commands.ListLists} => show all lists in directory
     ${Commands.Use} <list_name> => load new list identified by list_name
       Example: ${Commands.Use} work
@@ -237,6 +241,8 @@ object Tasks extends App {
 
     def spaces(s: String*) = s.mkString(Spaces, "\\s+", Spaces)
 
+    def allSpaces(s: String*) = s.mkString(Spaces, Spaces, Spaces)
+
     case class Command(name: String, args: String*) extends Regex(spaces(name +: args: _*)) {
       override def toString() = name
     }
@@ -258,17 +264,19 @@ object Tasks extends App {
     val RemoveItem = spaces(s"-$Number").r
     val SwapItems = spaces(s"$Number><$Number").r
     val NewItem = spaces("\"(.+)\"").r
+    val ListByPattern = allSpaces("/", "(.+)").r
   }
 
   @tailrec
   def listen(): Unit = {
     def toInt(n: String) = n.toInt - 1
 
-    import Commands._
+    import com.daodecode.tasks.Tasks.Commands._
 
     reader.readLine(s"${tasks.listName}> ") match {
       case Quit() => println("buy"); sys.exit()
       case ListItems() => list()
+      case ListByPattern(pattern) => list(tasks, pattern)
       case ListLists() => listLists()
       case Use(listName) => use(listName); list()
       case Drop(listName) => drop(listName)
